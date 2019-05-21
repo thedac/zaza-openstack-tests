@@ -57,22 +57,31 @@ class PerconaClusterColdStartTest(PerconaClusterTest):
         cls.machines = juju_utils.get_machine_uuids_for_application(cls.application)
 
     def test_100_cold_stop(self):
-        down_state = {
-            "percona-cluster:" {
-                "workload-status": "unknown",
-                "workload-status-message": "agent lost, see"}}
         self.machines.sort()
+        # Avoid hitting an update-status hook
+        logging.debug("Wait till model is idle ...")
+        zaza.model.block_until_all_units_idle()
+        logging.info("Stopping instances: {}".format(self.machines))
         for uuid in self.machines:
             self.nova_client.servers.stop(uuid)
-
-        zaza.model.wait_for_application_states(states=down_state)
-        # Wait till juju recognizes nodes are down
-        #time.sleep(60)
+        # Unfortunately, juju reports units in workload status "active"
+        # when they are in fact down. So we have to rely on a simple wait 
+        # and idle check.
+        logging.debug("Sleep ...")
+        time.sleep(30)
+        logging.debug("Wait till model is idle ...")
+        zaza.model.block_until_all_units_idle()
 
     def test_101_cold_start(self):
         self.machines.sort(reverse=True)
+        logging.info("Starting instances: {}".format(self.machines))
         for uuid in self.machines:
             self.nova_client.servers.start(uuid)
         test_config = lifecycle_utils.get_charm_config()
+        logging.debug("Sleep ...")
+        time.sleep(60)
+        logging.debug("Wait till model is idle ...")
+        zaza.model.block_until_all_units_idle()
+        logging.debug("Wait for application states ...")
         zaza.model.wait_for_application_states(
             states=test_config.get('target_deploy_status', {}))
