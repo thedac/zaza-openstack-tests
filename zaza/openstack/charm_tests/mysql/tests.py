@@ -17,6 +17,7 @@
 import logging
 import time
 
+import zaza.charm_lifecycle.utils as lifecycle_utils
 import zaza.model
 import zaza.openstack.charm_tests.test_utils as test_utils
 import zaza.openstack.utilities.juju as juju_utils
@@ -56,13 +57,22 @@ class PerconaClusterColdStartTest(PerconaClusterTest):
         cls.machines = juju_utils.get_machine_uuids_for_application(cls.application)
 
     def test_100_cold_stop(self):
+        down_state = {
+            "percona-cluster:" {
+                "workload-status": "unknown",
+                "workload-status-message": "agent lost, see"}}
         self.machines.sort()
         for uuid in self.machines:
             self.nova_client.servers.stop(uuid)
+
+        zaza.model.wait_for_application_states(states=down_state)
         # Wait till juju recognizes nodes are down
-        time.sleep(60)
+        #time.sleep(60)
 
     def test_101_cold_start(self):
         self.machines.sort(reverse=True)
         for uuid in self.machines:
             self.nova_client.servers.start(uuid)
+        test_config = lifecycle_utils.get_charm_config()
+        zaza.model.wait_for_application_states(
+            states=test_config.get('target_deploy_status', {}))
