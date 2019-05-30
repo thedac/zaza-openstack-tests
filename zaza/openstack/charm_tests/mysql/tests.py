@@ -60,6 +60,7 @@ class PerconaClusterColdStartTest(PerconaClusterTest):
         self.machines.sort()
         # Avoid hitting an update-status hook
         logging.debug("Wait till model is idle ...")
+        time.sleep(30)
         zaza.model.block_until_all_units_idle()
         logging.info("Stopping instances: {}".format(self.machines))
         for uuid in self.machines:
@@ -76,6 +77,7 @@ class PerconaClusterColdStartTest(PerconaClusterTest):
         self.machines.sort(reverse=True)
         logging.info("Starting instances: {}".format(self.machines))
         for uuid in self.machines:
+            #time.sleep(30)
             self.nova_client.servers.start(uuid)
         test_config = lifecycle_utils.get_charm_config()
         logging.debug("Sleep ...")
